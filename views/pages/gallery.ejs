@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- **DO THIS**: -->
+    <!--   Replace SDK_VERSION_NUMBER with the current SDK version number -->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2006-03-01.js"></script>
+    <script src="/viewPhotos.js"></script>
+    <script>console.log(albumBucketName);</script>
+    <!-- <script>listAlbums();</script> -->
+</head>
+
+<body>
+    <!-- <ul>
+        <% images.forEach(function(image) { %>
+            <li>
+                <strong>
+                    <%= image.name %>
+                </strong>
+                representing <%= image.date %>, price: <%= image.price %>
+            </li>
+            <img src='data:image/jpeg;base64,<%= image.name %>' />
+            <% }); %>
+    </ul> -->
+    <h1>Photo Album Viewer</h1>
+    <div id="viewer" />
+</body>
+
+</html>

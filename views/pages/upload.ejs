@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+</head>
+
+<body class="container">
+
+    <header>
+
+    </header>
+
+    <main>
+        <div class="jumbotron">
+            <h1>Image repo</h1>
+            <p> Upload a single image </p>
+            <form method="post" enctype="multipart/form-data" action="/upload">
+                <label for="fname">File Name:</label><br>
+                <input type="text" id="fname" name="name" value=""><br>
+                <label for="lname">Price:</label><br>
+                <input type="text" id="lname" name="price" value=""><br><br>
+                <input type="file" name="file">
+                <input type="submit" value="Submit">
+            </form>
+            <p> Upload up to 12 images</p>
+            <p> Set price otherwise default is 1!</p>
+            <p> Set name otherwise the name will be from file name.</p>
+            <form method="post" enctype="multipart/form-data" action="/uploads">
+                <input type="file" name="files" multiple>
+                <input type="submit" value="Submit">
+            </form>
+
+
+        </div>
+    </main>
+
+    <footer>
+
+    </footer>
+
+</body>
+
+</html>

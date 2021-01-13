@@ -1,168 +1,151 @@
-const http = require('http');
 const MongoClient = require('mongodb').MongoClient;
 const express = require('express');
-const AWS = require('aws-sdk');
 const dotenv = require('dotenv');
+const expressSesssion = require('express-session');
+const passport = require('passport');
+var createError = require('http-errors');
+var { Issuer, Strategy } = require('openid-client');
 
-
+//local js
 const imageSchema = require('./imageSchema.js')
 const multerUpload = require('./upload.js')
 
-console.log(imageSchema.createImage)
-
 dotenv.config();
+
+
+const uri = "mongodb+srv://" + process.env.user1 + ":" + process.env.pass1 + "@" + process.env.cluster + ".rrmwx.mongodb.net/images?retryWrites=true&w=majority";
 //connect the database
-console.log(process.env.PORT)
-console.log(process.env.user)
-const uri = "mongodb+srv://" + process.env.user + ":" + process.env.pass + "@" + process.env.cluster + ".rrmwx.mongodb.net/images?retryWrites=true&w=majority";
+const mongoClient = new MongoClient(uri, { useNewUrlParser: true });
 
-const client = new MongoClient(uri, { useNewUrlParser: true });
-
-
-//configuring AWS
-AWS.config.update({ region: 'us-west-2' });
-
-s3 = new AWS.S3({ apiVersion: '2006-03-01' });
-
-// look at buckets
-s3.listBuckets(function (err, data) {
-  if (err) {
-    console.log("Error", err);
-  } else {
-    //console.log("Success", data.Buckets);
-  }
-});
-
-var bucketParams = {
-  Bucket: 'shopify-challenge'
-}
-
-var uploadParams = {
-  Bucket: bucketParams.Bucket,
-  Key: '',
-  Body: ''
-};
-
+//configure express
 var app = express();
-
 app.set('view engine', 'ejs');
 
-app.use(express.static('public'));
-//setting middleware
-app.use('/images', express.static(__dirname + '/images')); //Serves resources from public folder
-
-
-
-//add error check l8ter
-
-
-//use ejs to render pages
-
+//create index route
 app.get('/', function (req, res) {
-  res.render('pages/upload');
+  res.render('index');
 });
 
+//Issuer openid-client for authentication
+Issuer.discover(process.env.issuer) // => Promise
+  .then(function (newIssuer) {
+    var client = new newIssuer.Client({
+      client_id: process.env.clientID,
+      client_secret: process.env.clientSecret,
+      redirect_uris: ['http://localhost:3000/auth/callback'],
+      post_logout_redirect_uris: ['http://localhost:3000/logout/callback'],
+      token_endpoint_auth_method: process.env.endpoint
+    })
+    // console.log('Discovered issuer %s %O', googleIssuer.issuer, googleIssuer.metadata);
+
+    //Creating sessions and passport use
+    app.use(
+      expressSesssion({
+        secret: process.env.expressSecret,
+        resave: false,
+        saveUninitialized: true
+      })
+    );
+
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+
+    passport.use(
+      'oidc',
+      new Strategy({ client }, (tokenSet, userinfo, done) => {
+        return done(null, tokenSet.claims());
+      })
+    );
+
+    passport.serializeUser(function (user, done) {
+      done(null, user);
+    });
+    passport.deserializeUser(function (user, done) {
+      done(null, user);
+    });
+
+    //get auth
+    app.get('/auth', (req, res, next) => {
+      passport.authenticate('oidc', { acr_values: 'urn:grn:authn:fi:all' })(req, res, next);
+    });
+
+    app.get('/auth/callback', (req, res, next) => {
+      passport.authenticate('oidc', {
+        successRedirect: '/users',
+        failureRedirect: '/'
+      })(req, res, next);
+    });
+
+
+
+  });
+
+//view iamge
 app.get('/view/:imageID', function (req, res) {
   // var a = getImage(req.params.imageID);
-  // console.log("inside views")
-  // console.log(a);
   // var encoded = encode(a.Body);
 
   res.render('pages/imagetemplate', { image: "abc" });
 
 });
 
+//view pages of images
 app.get('/views/:page', function (req, res) {
   // var a = getPage(parseInt(req.params.page), 3)
   // console.log(a)
-  client.connect(err => {
-    const collection = client.db("images").collection("details");
+  mongoClient.connect(err => {
+    const collection = mongoClient.db("images").collection("details");
     const options = {
       skip: parseInt(req.params.page),
       limit: 3,
     }
 
-    // perform actions on the collection object
     collection.find({}, options).toArray(function (err, result) {
       if (err) throw err;
       res.render('pages/gallery', { images: result })
     })
 
-    // client.close();
   });
   //console.log(res);
 })
 
-app.post("/upload", multerUpload.upload.array('file', 1), (req, res) => {
-  // single(req, res, (err) => {
-  //     if (err) {
-  //         console.log(err)
-  //         res.status(400).send("There is a problem!");
-  //     }
-  //     else {
-  //         uploadParams.Body =
-  //             console.log(req.file);
-
-
-  //     }
-  // });
-  console.log(req.body)
-  console.log("stuff")
-  imageSchema.createImage(req.body.name, req.body.price)
-  console.log("rest api post, hit ")
+//upload path
+app.get('/upload', function (req, res) {
+  res.render('pages/upload');
 });
 
+//user uploads a single file
+app.post("/upload", multerUpload.upload.array('file', 1), (req, res) => {
+  imageSchema.createImage(req.body.name, req.body.price)
+});
+
+//user uploads multiple files
 app.post('/uploads', multerUpload.upload.array('files', 12), function (req, res) {
   // req.files is array of `photos` files
   // req.body will contain the text fields, if there were any
-  // console.log(req.files);
   req.files.forEach(function (obj) {
     imageSchema.createImage(obj.originalname, 1);
   });
 });
 
+//no path found
+app.use(function (req, res, next) {
+  next(createError(404));
+});
 
-// app.post('/upload', function (req, res) {
-//     console.log(req);
-//     if (!req.file) {
-//         console.log("no file")
-//     } else {
-//         console.log(req.file);
-//         console.log("file")
-//     }
-// })
+// error handler
+app.use(function (err, req, res, next) {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-function getPage(skip, limit) {
+  // render the error page
+  res.status(err.status || 500);
+  res.render('error');
+});
 
-};
-
-
-//add images to db
-function add() {
-  client.connect(err => {
-    const collection = client.db("images").collection("store1");
-    const result = collection.insertOne(image);
-
-    console.log(result.insertedCount); // should print 1 on successful insert
-
-  })
-};
-
-function getImage(name) {
-  console.log("images")
-  console.log(name);
-  const data = s3.getObject(
-    {
-      Bucket: uploadParams.Bucket,
-      Key: name
-    }
-
-  ).promise();
-  console.log("data")
-  console.log(data)
-  return data;
-};
-
+//encode images
 function encode(data) {
   let buf = Buffer.from(data);
   let base64 = buf.toString('base64');
@@ -170,12 +153,11 @@ function encode(data) {
 };
 
 
-// getPage(0, 5);
 const port = process.env.PORT;
 
 
 
-var server = app.listen(port);
+app.listen(port);
 
 //need to do
 
@@ -186,7 +168,6 @@ var server = app.listen(port);
 //buy and sell
 
 //refactor code, place it in specific folders
-
-//done
+//add router
 
 //retrieving single images work

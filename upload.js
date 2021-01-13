@@ -9,14 +9,7 @@ AWS.config.update({ region: 'us-west-2' });
 
 s3 = new AWS.S3({ apiVersion: '2006-03-01' });
 
-// look at buckets
-s3.listBuckets(function (err, data) {
-    if (err) {
-        console.log("Error", err);
-    } else {
-        //console.log("Success", data.Buckets);
-    }
-});
+
 
 var upload = multer({
     storage: multerS3({
@@ -30,3 +23,36 @@ var upload = multer({
 });
 
 exports.upload = upload;
+
+//configuring AWS
+// AWS.config.update({ region: 'us-west-2' });
+
+// s3 = new AWS.S3({ apiVersion: '2006-03-01' });
+
+// // look at buckets
+// s3.listBuckets(function (err, data) {
+//   if (err) {
+//     console.log("Error", err);
+//   } else {
+//     //console.log("Success", data.Buckets);
+//   }
+// });
+
+
+
+
+//add images to db
+// function getImage(name) {
+//   console.log("images")
+//   console.log(name);
+//   const data = s3.getObject(
+//     {
+//       Bucket: uploadParams.Bucket,
+//       Key: name
+//     }
+
+//   ).promise();
+//   console.log("data")
+//   console.log(data)
+//   return data;
+// };
